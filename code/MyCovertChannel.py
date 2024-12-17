@@ -69,11 +69,20 @@ class MyCovertChannel(CovertChannelBase):
 
     def send(self, xor_key, rule,log_file_name):
         """
-        - In this function, you expected to create a random message (using function/s in CovertChannelBase), and send it to the receiver container. Entire sending operations should be handled in this function.
-        - After the implementation, please rewrite this comment part to explain your code basically.
+        - In this function, a random binary message is generated using the `generate_random_binary_message_with_logging` function from the `CovertChannelBase` class.
+        - The binary message is divided into chunks of 2 bits each (to be encoded into DNS opcode fields).
+        - For each 2-bit chunk, the bits (bit1 and bit2) are encrypted using the `encrypt` function, which applies transformations based on the provided `xor_key` and `rule`. they are both 4 bit integers (0-15)
+        - The encrypted value is assigned to the DNS opcode field in a DNS query packet.
+        - The DNS query packet is then sent to the receiver using the `super().send` method, where:
+            - Destination IP is set to "receiver".
+            - Destination port is set to 53 (standard DNS port).
+            - DNS query name is set to "azd.com" (a placeholder domain name).
+        - This process continues until all the chunks of the binary message are sent.
+        - The sent message is logged to the specified log file for reference.
         """
 
-        binary_message = self.generate_random_binary_message_with_logging(log_file_name,20,20)
+
+        binary_message = self.generate_random_binary_message_with_logging(log_file_name)
 
         chunks =[binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
         
@@ -93,9 +102,17 @@ class MyCovertChannel(CovertChannelBase):
         
     def receive(self,xor_key, rule, log_file_name):
         """
-        - In this function, you are expected to receive and decode the transferred message. Because there are many types of covert channels, the receiver implementation depends on the chosen covert channel type, and you may not need to use the functions in CovertChannelBase.
-        - After the implementation, please rewrite this comment part to explain your code basically.
+        - In this function, DNS packets are captured and processed to extract the hidden message.
+        - Packet sniffing is performed using the `sniff` function, with a filter to capture UDP packets on port 53 (DNS traffic).
+        - For each captured DNS packet:
+            - The opcode field of the DNS packet is decrypted using the `decrypt` function, which reverses the encryption process with the specified `xor_key` and `rule`.
+            - The decrypted bits (bit1 and bit2) are concatenated to reconstruct the binary message.
+        - The binary message is processed in 8-bit chunks, where each 8-bit chunk is converted into its corresponding ASCII character.
+        - The characters are accumulated into the final decoded message.
+        - The sniffing process stops when a '.' (dot) character is received, indicating the end of the message.
+        - The final decoded message is logged to the specified log file for reference.
         """
+
         binary = ""  # Store the unprocessed message in binary
         message = ""  # Final decoded message
         cur = 0       # Counter to track bits received

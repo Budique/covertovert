@@ -12,7 +12,8 @@ class MyCovertChannel(CovertChannelBase):
         - You can edit __init__.
         """
         pass
-    def encrypt(self,bit1, bit2, xor_key, rule):
+
+    def encrypt(self, bit1, bit2, xor_key, rule):
 
         binary_list = [int(bit) for bit in f"{rule:04b}"]
         leftmost = ((1 - bit1) << 1) + bit1  #0b0 maps to 0b10,0b1 maps to 0b01
@@ -37,7 +38,7 @@ class MyCovertChannel(CovertChannelBase):
         return tmpresult ^ xor_key  # xor with the specified  key
 
 
-    def decrypt(self,encrypted_value, xor_key, rule):
+    def decrypt(self, encrypted_value, xor_key, rule):
         tmpresult = encrypted_value ^ xor_key  # Reverse XOR step
 
         binary_list = [int(bit) for bit in f"{rule:04b}"]
@@ -68,7 +69,7 @@ class MyCovertChannel(CovertChannelBase):
         return bit1, bit2  # Return original bit1 and bit2
 
 
-    def send(self, xor_key, rule,log_file_name):
+    def send(self, xor_key, rule, increment, log_file_name):
         """
         - In this function, a random binary message is generated using the `generate_random_binary_message_with_logging` function from the `CovertChannelBase` class.
         - The binary message is divided into chunks of 2 bits each (to be encoded into DNS opcode fields).
@@ -84,15 +85,19 @@ class MyCovertChannel(CovertChannelBase):
 
 
         binary_message = self.generate_random_binary_message_with_logging(log_file_name)
+        # For bitrate measurement
+        binary_message = self.generate_random_binary_message_with_logging(log_file_name, 16, 16)
 
         chunks = [binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
-        #start_time = time.time()
+        
+        start_time = time.time()
         
         for chunk in chunks:
-            bit1 = int(chunk[0],2)
-            bit2 = int(chunk[1],2)
-            opcode_value = self.encrypt(bit1,bit2,xor_key,rule)
+            bit1 = int(chunk[0], 2)
+            bit2 = int(chunk[1], 2)
+            opcode_value = self.encrypt(bit1, bit2, xor_key, rule)
 
+            rule = (rule+increment)%16
 
             dns_query = IP(dst="receiver") / UDP(dport=53) / DNS(
                 id=1, qd=DNSQR(qname="azd.com"), opcode=opcode_value
@@ -101,12 +106,12 @@ class MyCovertChannel(CovertChannelBase):
 
             super().send(dns_query)
         
-        #end_time = time.time()
-        #execution_time = end_time - start_time
-        #print(f"Sent {len(binary_message)} bits in {execution_time}.\nBitrate: {(len(binary_message)/execution_time):.4f}")
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Sent 128 bits in {execution_time}.\nBitrate: {(128/execution_time):.4f}")
 
         
-    def receive(self,xor_key, rule, log_file_name):
+    def receive(self, xor_key, rule, increment, log_file_name):
         """
         - In this function, DNS packets are captured and processed to extract the hidden message.
         - Packet sniffing is performed using the `sniff` function, with a filter to capture UDP packets on port 53 (DNS traffic).
@@ -123,6 +128,7 @@ class MyCovertChannel(CovertChannelBase):
         message = ""  # Final decoded message
         cur = 0       # Counter to track bits received
         dotAcquired = False
+        sender_ip = "172.18.0.2"
         first_packet_received = False
         #start_time = 0
         #end_time = 0
@@ -137,9 +143,9 @@ class MyCovertChannel(CovertChannelBase):
 
         def process_packet(packet):
             """Processes a single packet, decrypts it, and updates the message."""
-            nonlocal binary, message, cur,dotAcquired
+            nonlocal binary, message, cur, dotAcquired, rule, sender_ip
             #nonlocal first_packet_received, start_time
-            if DNS in packet and hasattr(packet[DNS], 'opcode'):
+            if IP in packet and sender_ip == packet[IP].src and DNS in packet and hasattr(packet[DNS], 'opcode'):
                 #if not first_packet_received:
                 #    first_packet_received = True
                 #    start_time = time.time()
@@ -149,6 +155,8 @@ class MyCovertChannel(CovertChannelBase):
                 
                 # Decrypt the opcode to retrieve the original bits
                 bit1, bit2 = self.decrypt(opcode_value, xor_key, rule)
+                rule = (rule+increment)%16
+
                 chunk = f"{bit1}{bit2}"
                 binary += chunk
                 cur += 2

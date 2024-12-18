@@ -4,6 +4,7 @@
     "parameters": {
       "xor_key": 5,
       "rule": 7,
+      "increment": 3,
       "log_file_name": "Example_UDPTimingInterarrivalChannelSender.log"
     }
   },
@@ -11,6 +12,7 @@
     "parameters": {
       "xor_key": 5,
       "rule": 7,
+      "increment": 3,
       "log_file_name": "Example_UDPTimingInterarrivalChannelReceiver.log"
     }
   }

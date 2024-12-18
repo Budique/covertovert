@@ -22,17 +22,20 @@ Encryption & Decryption
         XORs the result with the key for added security.
 
 The decrypt function reverses these operations to retrieve the original 2-bit chunk.
+After each encrpytion and decrpytion, rule is incremented by the specified increment value and then taken module 16.
 Sending Mechanism
 
     A random binary message is generated using the generate_random_binary_message_with_logging() function.
     The message is divided into 2-bit chunks.
     Each chunk is encrypted and assigned to the DNS Opcode field.
+    The rule is incremented by the specified increment value and then taken modulo 16.
     DNS query packets (using the scapy library) are sent to a target receiver on port 53.
 
 Receiving Mechanism
 
     The program sniffs DNS packets on port 53.
     For each packet, the Opcode field is decrypted to extract the 2-bit chunks.
+    The rule is incremented by the specified increment value and then taken modulo 16.
     The chunks are concatenated into an 8-bit byte stream.
     Each byte is converted into an ASCII character.
     The process continues until the end-of-message marker (".") is received.
@@ -53,10 +56,11 @@ Run the send function to generate and send a covert message:
 
 xor_key = 0b1010           # 4-bit XOR key
 rule = 0b1101              # 4-bit transformation rule
+increment = 0b0011         $ 4-bit increment value
 log_file = "sent_log.txt"  # Log file to store the original message
 
 channel = MyCovertChannel()
-channel.send(xor_key, rule, log_file)
+channel.send(xor_key, rule, increment, log_file)
 
 Receiving Messages
 
@@ -64,10 +68,11 @@ Run the receive function to sniff and decode the covert message:
 
 xor_key = 0b1010           # Must match the sender's XOR key
 rule = 0b1101              # Must match the sender's transformation rule
+increment = 0b0011         # Must match the sender's increment value
 log_file = "received_log.txt"
 
 channel = MyCovertChannel()
-channel.receive(xor_key, rule, log_file)
+channel.receive(xor_key, rule, increment, log_file)
 
 Files
 
@@ -81,8 +86,9 @@ Example Workflow
 
 xor_key = 0b1010
 rule = 0b1101
+increment = 0b0011
 channel = MyCovertChannel()
-channel.send(xor_key, rule, "sent_log.txt")
+channel.send(xor_key, rule, increment, "sent_log.txt")
 
 Output:
 
@@ -92,8 +98,9 @@ Receiver runs the following script:
 
     xor_key = 0b1010
     rule = 0b1101
+    increment = 0b0011
     channel = MyCovertChannel()
-    channel.receive(xor_key, rule, "received_log.txt")
+    channel.receive(xor_key, rule, increment, "received_log.txt")
 
     Output:
         Packets are sniffed, decrypted, and the original message is reconstructed.

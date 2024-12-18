@@ -86,7 +86,7 @@ class MyCovertChannel(CovertChannelBase):
 
         binary_message = self.generate_random_binary_message_with_logging(log_file_name)
         # For bitrate measurement
-        binary_message = self.generate_random_binary_message_with_logging(log_file_name, 16, 16)
+        #binary_message = self.generate_random_binary_message_with_logging(log_file_name, 16, 16)
 
         chunks = [binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
         

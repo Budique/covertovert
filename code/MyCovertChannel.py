@@ -1,5 +1,6 @@
 from CovertChannelBase import CovertChannelBase
 from scapy.all import DNS, DNSQR,DNSRR, IP, UDP, sniff
+import time # For measuring bitrate/sec
 
 class MyCovertChannel(CovertChannelBase):
     """
@@ -84,7 +85,8 @@ class MyCovertChannel(CovertChannelBase):
 
         binary_message = self.generate_random_binary_message_with_logging(log_file_name)
 
-        chunks =[binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
+        chunks = [binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
+        #start_time = time.time()
         
         for chunk in chunks:
             bit1 = int(chunk[0],2)
@@ -98,6 +100,10 @@ class MyCovertChannel(CovertChannelBase):
 
 
             super().send(dns_query)
+        
+        #end_time = time.time()
+        #execution_time = end_time - start_time
+        #print(f"Sent {len(binary_message)} bits in {execution_time}.\nBitrate: {(len(binary_message)/execution_time):.4f}")
 
         
     def receive(self,xor_key, rule, log_file_name):
@@ -116,18 +122,28 @@ class MyCovertChannel(CovertChannelBase):
         binary = ""  # Store the unprocessed message in binary
         message = ""  # Final decoded message
         cur = 0       # Counter to track bits received
-        dotAcquired =False
+        dotAcquired = False
+        first_packet_received = False
+        #start_time = 0
+        #end_time = 0
 
         def stop_sniffing(packet):
             #continue as long as dot is not received
             nonlocal dotAcquired
+            #nonlocal end_time
+            #end_time = time.time()
             return dotAcquired
             
 
         def process_packet(packet):
             """Processes a single packet, decrypts it, and updates the message."""
             nonlocal binary, message, cur,dotAcquired
+            #nonlocal first_packet_received, start_time
             if DNS in packet and hasattr(packet[DNS], 'opcode'):
+                #if not first_packet_received:
+                #    first_packet_received = True
+                #    start_time = time.time()
+
                 dns_packet = packet[DNS]
                 opcode_value = dns_packet.opcode
                 
@@ -143,11 +159,17 @@ class MyCovertChannel(CovertChannelBase):
                     byte = binary[:8]  # Extract first 8 bits
                     character = chr(int(byte, 2))
                     message += character
-                    print(f"Received character: {character}")
+                    #print(f"Received character: {character}")
                     binary = binary[8:]  # Remove processed bits
                     if character == '.':
                         dotAcquired =True
         # Start sniffing with a stop_filter
         sniff(filter="udp port 53", prn=process_packet, stop_filter=stop_sniffing)
+
+        #print(start_time)
+        #print(end_time)
+        #execution_time = end_time - start_time
+        #binary_message = ''.join(format(i, '08b') for i in bytearray(message, encoding='utf-8'))
+        #print(f"Received {len(binary_message)} bits in {execution_time}.\nBitrate: {(len(binary_message)/execution_time):.4f}")
                                             
         self.log_message(message, log_file_name)

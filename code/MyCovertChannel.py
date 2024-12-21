@@ -15,8 +15,7 @@ class MyCovertChannel(CovertChannelBase):
 
     def encrypt(self, bit1, bit2, xor_key, rule):
         """
-        Encrypts a pair of binary bits (`bit1` and `bit2`) into a 4-bit integer using a series of transformations 
-        and an XOR operation.
+        Encrypts a pair of binary bits (`bit1` and `bit2`) into a 4-bit integer using a series of transformations and an XOR operation.
 
         :param bit1: The first bit (0 or 1) of the pair to be encrypted.
         :type bit1: int
@@ -24,8 +23,7 @@ class MyCovertChannel(CovertChannelBase):
         :type bit2: int
         :param xor_key: A 4-bit integer (0–15) used as the XOR key for encryption.
         :type xor_key: int
-        :param rule: A 4-bit integer (0–15) defining the transformations to apply during encryption. Each bit of the rule
-            determines a specific transformation:
+        :param rule: A 4-bit integer (0–15) defining the transformations to apply during encryption. Each bit of the rule determines a specific transformation:
             
             - **Rule bit 0**: Modifies `bit1` such that `0` becomes `01` and `1` becomes `10`.
             - **Rule bit 1**: Modifies `bit2` such that `0` becomes `01` and `1` becomes `10`.
@@ -112,17 +110,36 @@ class MyCovertChannel(CovertChannelBase):
 
     def send(self, xor_key, rule, increment, log_file_name):
         """
-        - In this function, a random binary message is generated using the `generate_random_binary_message_with_logging` function from the `CovertChannelBase` class.
-        - The binary message is divided into chunks of 2 bits each (to be encoded into DNS opcode fields).
-        - For each 2-bit chunk, the bits (bit1 and bit2) are encrypted using the `encrypt` function, which applies transformations based on the provided `xor_key` and `rule`. They are both 4 bit integers (0-15)
-        - Rule is incremented by the increment value and then taken module 16 to be in range (0, 15). This is done for making the decryption process more difficult from outside.
-        - The encrypted value is assigned to the DNS opcode field in a DNS query packet.
-        - The DNS query packet is then sent to the receiver using the `super().send` method, where:
-            - Destination IP is set to "receiver".
-            - Destination port is set to 53 (standard DNS port).
-            - DNS query name is set to "azd.com" (a placeholder domain name).
-        - This process continues until all the chunks of the binary message are sent.
-        - The sent message is logged to the specified log file for reference.
+        Sends a covert message using DNS query packets by encrypting binary data into the `opcode` field.
+
+        :param xor_key: A 4-bit integer (0–15) used as the XOR key for encryption.
+        :type xor_key: int
+        :param rule: A 4-bit integer (0–15) defining the initial encryption rule.
+        :type rule: int
+        :param increment: The increment value for the rule, used to vary the encryption rule for each packet.
+        :type increment: int
+        :param log_file_name: The name of the file where the sent binary message will be logged.
+        :type log_file_name: str
+
+        **Process:**
+
+        - Generates a random binary message using `generate_random_binary_message_with_logging`.
+
+        - Divides the message into chunks of 2 bits, which are encrypted using the `encrypt` function.
+
+        - The encrypted value is assigned to the DNS `opcode` field in a query packet.
+
+        - Sends the DNS query packets to the receiver, with the destination IP set to `"receiver"`, port 53 and a placeholder domain name `"azd.com"`.
+        
+        - Logs the sent message to the specified log file.
+
+        **Encryption Details:**
+
+        - The `xor_key` and `rule` are used to encrypt each 2-bit chunk.
+
+        - The `rule` is incremented by the `increment` value after processing each chunk and modulo 16 ensures it stays within the 0–15 range.
+
+        :return: None
         """
 
 
@@ -155,16 +172,45 @@ class MyCovertChannel(CovertChannelBase):
         
     def receive(self, xor_key, rule, increment, log_file_name):
         """
-        - In this function, DNS packets are captured and processed to extract the hidden message.
-        - Packet sniffing is performed using the `sniff` function, with a filter to capture UDP packets on port 53 (DNS traffic).
-        - For each captured DNS packet:
-            - The opcode field of the DNS packet is decrypted using the `decrypt` function, which reverses the encryption process with the specified `xor_key` and `rule`.
-            - The decrypted bits (bit1 and bit2) are concatenated to reconstruct the binary message.
-            - Rule is incremented by the increment value and then taken module 16 to be in range (0, 15). This is done for making the decryption process more difficult from outside.
-        - The binary message is processed in 8-bit chunks, where each 8-bit chunk is converted into its corresponding ASCII character.
-        - The characters are accumulated into the final decoded message.
-        - The sniffing process stops when a '.' (dot) character is received, indicating the end of the message.
-        - The final decoded message is logged to the specified log file for reference.
+        Receives a covert message by decrypting binary data from DNS query packets captured on port 53.
+
+        :param xor_key: A 4-bit integer (0–15) used as the XOR key for decryption.
+        :type xor_key: int
+        :param rule: A 4-bit integer (0–15) defining the initial decryption rule.
+        :type rule: int
+        :param increment: The increment value for the rule, used to vary the decryption rule for each packet.
+        :type increment: int
+        :param log_file_name: The name of the file where the decoded message will be logged.
+        :type log_file_name: str
+
+        **Process:**
+
+        - Captures DNS packets using `sniff`, filtering UDP traffic on port 53.
+
+        - For each packet, decrypts the `opcode` field using the `decrypt` function.
+
+        - The decrypted bits are concatenated to reconstruct the original binary message.
+
+        - Processes the binary data in 8-bit chunks, converting each chunk into its corresponding ASCII character.
+
+        - Stops capturing packets when a '.' (dot) character is received, signaling the end of the message.
+
+        - Logs the final decoded message to the specified log file.
+
+
+        **Decryption Details:**
+
+        - The `xor_key` and `rule` are used to decrypt each 4-bit `opcode` value.
+
+        - The `rule` is incremented by the `increment` value after processing each packet and modulo 16 ensures it stays within the 0–15 range.
+
+        **Sniffing Details:**
+
+        - Captures only packets from the sender's IP address (`172.18.0.2`) and UDP port 53.
+        
+        - Stops when a '.' (dot) character is detected in the message.
+
+        :return: None
         """
 
         binary = ""  # Store the unprocessed message in binary
@@ -180,7 +226,7 @@ class MyCovertChannel(CovertChannelBase):
             
 
         def process_packet(packet):
-            """Processes a single packet, decrypts it, and updates the message."""
+            """Processes a single packet, decrypts it and updates the message."""
             nonlocal binary, message, cur, dotAcquired, rule, sender_ip
             if IP in packet and sender_ip == packet[IP].src and DNS in packet and hasattr(packet[DNS], 'opcode'):
 

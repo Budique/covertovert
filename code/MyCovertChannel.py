@@ -15,29 +15,26 @@ class MyCovertChannel(CovertChannelBase):
 
     def encrypt(self, bit1, bit2, xor_key, rule):
         """
-        This function encrypts a pair of binary bits (bit1 and bit2) using a series of transformations and an XOR operation. The encrypted result is a 4-bit integer.
+        Encrypts a pair of binary bits (`bit1` and `bit2`) into a 4-bit integer using a series of transformations 
+        and an XOR operation.
 
-        Parameters:
-        - bit1 (int): The first bit of the pair to be encrypted.
-        - bit2 (int): The second bit of the pair to be encrypted.
-        - xor_key (int): A 4-bit integer used as the XOR key for encryption.
-        - rule (int): A 4-bit integer defining the transformations to be applied to the bits. Each bit of the rule determines a specific transformation:
-        
-        Rule bit 0: If set, modifies bit1 such that 0 becomes 01 and 1 becomes 10.
-        Rule bit 1: If set, modifies bit2 such that 0 becomes 01 and 1 becomes 10.
-        Rule bit 2: If set, swaps the positions of the transformed bits.
-        Rule bit 3: If set, reverses the binary representation of the combined result.
-        
-        Process:
-        - Transform bit1 and bit2 based on the first two bits of the rule:
-            - If the corresponding rule bit is 1, invert the mapping of 0 and 1.
-            - Otherwise, apply the standard mapping (0 -> 10, 1 -> 01).
-        - Combine the transformed bits into a 4-bit result.
-        - Apply swapping or reversal based on the third and fourth rule bits.
-        - Perform an XOR operation with xor_key to generate the encrypted result.
+        :param bit1: The first bit (0 or 1) of the pair to be encrypted.
+        :type bit1: int
+        :param bit2: The second bit (0 or 1) of the pair to be encrypted.
+        :type bit2: int
+        :param xor_key: A 4-bit integer (0–15) used as the XOR key for encryption.
+        :type xor_key: int
+        :param rule: A 4-bit integer (0–15) defining the transformations to apply during encryption. Each bit of the rule
+            determines a specific transformation:
+            
+            - **Rule bit 0**: Modifies `bit1` such that `0` becomes `01` and `1` becomes `10`.
+            - **Rule bit 1**: Modifies `bit2` such that `0` becomes `01` and `1` becomes `10`.
+            - **Rule bit 2**: If set, swaps the positions of the transformed bits.
+            - **Rule bit 3**: If set, reverses the binary representation of the combined result.
 
-        Returns:
-        - encrypted_value (int): The final 4-bit encrypted value.
+        :type rule: int
+        :return: The final 4-bit encrypted value.
+        :rtype: int
         """
 
         binary_list = [int(bit) for bit in f"{rule:04b}"]
@@ -65,26 +62,23 @@ class MyCovertChannel(CovertChannelBase):
 
     def decrypt(self, encrypted_value, xor_key, rule):
         """
-        This function reverses the transformations applied during encryption to retrieve the original pair of binary bits (bit1 and bit2) from the encrypted value.
+        Decrypts an encrypted 4-bit integer (`encrypted_value`) to retrieve the original binary bits (`bit1` and `bit2`).
 
-        Parameters:
-        - encrypted_value (int): The 4-bit integer resulting from the encryption process.
-        - xor_key (int): The same 4-bit integer (0–15) used during encryption.
-        - rule (int): A 4-bit integer (0–15) specifying the transformations applied during encryption, which are reversed here.
+        :param encrypted_value: The 4-bit integer resulting from the encryption process.
+        :type encrypted_value: int
+        :param xor_key: The same 4-bit integer (0–15) used during encryption.
+        :type xor_key: int
+        :param rule: A 4-bit integer (0–15) specifying the transformations applied during encryption, which are reversed here.
+            The rule is interpreted as follows:
 
-        Process:
-        - Reverse the XOR operation using the same xor_key.
-        - Check the fourth bit of the rule:
-            - If set, reverse the binary representation of the result.
-        - Split the decrypted result into the leftmost and rightmost 2 bits.
-        - Reverse the swapping transformation if the third rule bit is set.
-        - Extract the original bit1 and bit2 by reversing the mapping based on the first two rule bits:
-        - If the rule bit is 1, reverse the inverted mapping.
-        - Otherwise, retrieve the bits using the standard mapping (10 -> 0, 01 -> 1).
+            - **Rule bit 0**: If set, reverses the transformation applied to `bit1`.
+            - **Rule bit 1**: If set, reverses the transformation applied to `bit2`.
+            - **Rule bit 2**: If set, undoes the swapping of transformed bits.
+            - **Rule bit 3**: If set, undoes the reversal of the binary representation.
 
-        Returns:
-        - bit1 (int): The original first bit (0 or 1).
-        - bit2 (int): The original second bit (0 or 1).
+        :type rule: int
+        :return: A tuple containing the original first bit (`bit1`) and second bit (`bit2`).
+        :rtype: tuple[int, int]
         """
         tmpresult = encrypted_value ^ xor_key  # Reverse XOR step
 

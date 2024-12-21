@@ -1,5 +1,5 @@
 from CovertChannelBase import CovertChannelBase
-from scapy.all import DNS, DNSQR,DNSRR, IP, UDP, sniff
+from scapy.all import DNS, DNSQR, DNSRR, IP, UDP, sniff
 import time # For measuring bitrate/sec
 
 class MyCovertChannel(CovertChannelBase):
@@ -14,14 +14,39 @@ class MyCovertChannel(CovertChannelBase):
         pass
 
     def encrypt(self, bit1, bit2, xor_key, rule):
+        """
+        This function encrypts a pair of binary bits (bit1 and bit2) using a series of transformations and an XOR operation. The encrypted result is a 4-bit integer.
+
+        Parameters:
+        - bit1 (int): The first bit of the pair to be encrypted.
+        - bit2 (int): The second bit of the pair to be encrypted.
+        - xor_key (int): A 4-bit integer used as the XOR key for encryption.
+        - rule (int): A 4-bit integer defining the transformations to be applied to the bits. Each bit of the rule determines a specific transformation:
+        
+        Rule bit 0: If set, modifies bit1 such that 0 becomes 01 and 1 becomes 10.
+        Rule bit 1: If set, modifies bit2 such that 0 becomes 01 and 1 becomes 10.
+        Rule bit 2: If set, swaps the positions of the transformed bits.
+        Rule bit 3: If set, reverses the binary representation of the combined result.
+        
+        Process:
+        - Transform bit1 and bit2 based on the first two bits of the rule:
+            - If the corresponding rule bit is 1, invert the mapping of 0 and 1.
+            - Otherwise, apply the standard mapping (0 -> 10, 1 -> 01).
+        - Combine the transformed bits into a 4-bit result.
+        - Apply swapping or reversal based on the third and fourth rule bits.
+        - Perform an XOR operation with xor_key to generate the encrypted result.
+
+        Returns:
+        - encrypted_value (int): The final 4-bit encrypted value.
+        """
 
         binary_list = [int(bit) for bit in f"{rule:04b}"]
-        leftmost = ((1 - bit1) << 1) + bit1  #0b0 maps to 0b10,0b1 maps to 0b01
+        leftmost = ((1 - bit1) << 1) + bit1  #0b0 maps to 0b10, 0b1 maps to 0b01
         rightmost = ((1 - bit2) << 1) + bit2 
 
-        if binary_list[0] == 1:  #0b0 maps to 0b01,0b1 maps to 0b10
+        if binary_list[0] == 1:  #0b0 maps to 0b01, 0b1 maps to 0b10
             leftmost = (bit1 << 1) + (1 - bit1)
-        if binary_list[1] == 1:  #0b0 maps to 0b01,0b1 maps to 0b10
+        if binary_list[1] == 1:  #0b0 maps to 0b01, 0b1 maps to 0b10
             rightmost = (bit2 << 1) + (1 - bit2)
 
         # Combine leftmost and rightmost into a 4-bit result
@@ -35,15 +60,37 @@ class MyCovertChannel(CovertChannelBase):
             reversed_binary_str = binary_str[::-1]
             tmpresult = int(reversed_binary_str, 2)  # Convert back to integer
 
-        return tmpresult ^ xor_key  # xor with the specified  key
+        return tmpresult ^ xor_key  # xor with the specified key
 
 
     def decrypt(self, encrypted_value, xor_key, rule):
+        """
+        This function reverses the transformations applied during encryption to retrieve the original pair of binary bits (bit1 and bit2) from the encrypted value.
+
+        Parameters:
+        - encrypted_value (int): The 4-bit integer resulting from the encryption process.
+        - xor_key (int): The same 4-bit integer (0–15) used during encryption.
+        - rule (int): A 4-bit integer (0–15) specifying the transformations applied during encryption, which are reversed here.
+
+        Process:
+        - Reverse the XOR operation using the same xor_key.
+        - Check the fourth bit of the rule:
+            - If set, reverse the binary representation of the result.
+        - Split the decrypted result into the leftmost and rightmost 2 bits.
+        - Reverse the swapping transformation if the third rule bit is set.
+        - Extract the original bit1 and bit2 by reversing the mapping based on the first two rule bits:
+        - If the rule bit is 1, reverse the inverted mapping.
+        - Otherwise, retrieve the bits using the standard mapping (10 -> 0, 01 -> 1).
+
+        Returns:
+        - bit1 (int): The original first bit (0 or 1).
+        - bit2 (int): The original second bit (0 or 1).
+        """
         tmpresult = encrypted_value ^ xor_key  # Reverse XOR step
 
         binary_list = [int(bit) for bit in f"{rule:04b}"]
 
-        if binary_list[3] == 1:  # if its reversed,reverse the binary representation
+        if binary_list[3] == 1:  # if its reversed, reverse the binary representation
             binary_str = bin(tmpresult)[2:].zfill(4)
             reversed_binary_str = binary_str[::-1]
             tmpresult = int(reversed_binary_str, 2)
@@ -73,7 +120,8 @@ class MyCovertChannel(CovertChannelBase):
         """
         - In this function, a random binary message is generated using the `generate_random_binary_message_with_logging` function from the `CovertChannelBase` class.
         - The binary message is divided into chunks of 2 bits each (to be encoded into DNS opcode fields).
-        - For each 2-bit chunk, the bits (bit1 and bit2) are encrypted using the `encrypt` function, which applies transformations based on the provided `xor_key` and `rule`. they are both 4 bit integers (0-15)
+        - For each 2-bit chunk, the bits (bit1 and bit2) are encrypted using the `encrypt` function, which applies transformations based on the provided `xor_key` and `rule`. They are both 4 bit integers (0-15)
+        - Rule is incremented by the increment value and then taken module 16 to be in range (0, 15). This is done for making the decryption process more difficult from outside.
         - The encrypted value is assigned to the DNS opcode field in a DNS query packet.
         - The DNS query packet is then sent to the receiver using the `super().send` method, where:
             - Destination IP is set to "receiver".
@@ -90,7 +138,7 @@ class MyCovertChannel(CovertChannelBase):
 
         chunks = [binary_message[i:i+2] for i in range(0, len(binary_message), 2)]
         
-        start_time = time.time()
+        #start_time = time.time()
         
         for chunk in chunks:
             bit1 = int(chunk[0], 2)
@@ -106,9 +154,9 @@ class MyCovertChannel(CovertChannelBase):
 
             super().send(dns_query)
         
-        end_time = time.time()
-        execution_time = end_time - start_time
-        print(f"Sent 128 bits in {execution_time}.\nBitrate: {(128/execution_time):.4f}")
+        #end_time = time.time()
+        #execution_time = end_time - start_time
+        #print(f"Sent 128 bits in {execution_time}.\nBitrate: {(128/execution_time):.4f}")
 
         
     def receive(self, xor_key, rule, increment, log_file_name):
@@ -118,6 +166,7 @@ class MyCovertChannel(CovertChannelBase):
         - For each captured DNS packet:
             - The opcode field of the DNS packet is decrypted using the `decrypt` function, which reverses the encryption process with the specified `xor_key` and `rule`.
             - The decrypted bits (bit1 and bit2) are concatenated to reconstruct the binary message.
+            - Rule is incremented by the increment value and then taken module 16 to be in range (0, 15). This is done for making the decryption process more difficult from outside.
         - The binary message is processed in 8-bit chunks, where each 8-bit chunk is converted into its corresponding ASCII character.
         - The characters are accumulated into the final decoded message.
         - The sniffing process stops when a '.' (dot) character is received, indicating the end of the message.
@@ -129,26 +178,17 @@ class MyCovertChannel(CovertChannelBase):
         cur = 0       # Counter to track bits received
         dotAcquired = False
         sender_ip = "172.18.0.2"
-        first_packet_received = False
-        #start_time = 0
-        #end_time = 0
 
         def stop_sniffing(packet):
             #continue as long as dot is not received
             nonlocal dotAcquired
-            #nonlocal end_time
-            #end_time = time.time()
             return dotAcquired
             
 
         def process_packet(packet):
             """Processes a single packet, decrypts it, and updates the message."""
             nonlocal binary, message, cur, dotAcquired, rule, sender_ip
-            #nonlocal first_packet_received, start_time
             if IP in packet and sender_ip == packet[IP].src and DNS in packet and hasattr(packet[DNS], 'opcode'):
-                #if not first_packet_received:
-                #    first_packet_received = True
-                #    start_time = time.time()
 
                 dns_packet = packet[DNS]
                 opcode_value = dns_packet.opcode
@@ -173,11 +213,5 @@ class MyCovertChannel(CovertChannelBase):
                         dotAcquired =True
         # Start sniffing with a stop_filter
         sniff(filter="udp port 53", prn=process_packet, stop_filter=stop_sniffing)
-
-        #print(start_time)
-        #print(end_time)
-        #execution_time = end_time - start_time
-        #binary_message = ''.join(format(i, '08b') for i in bytearray(message, encoding='utf-8'))
-        #print(f"Received {len(binary_message)} bits in {execution_time}.\nBitrate: {(len(binary_message)/execution_time):.4f}")
                                             
         self.log_message(message, log_file_name)

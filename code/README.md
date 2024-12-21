@@ -8,6 +8,8 @@ The covert channel:
     Sends DNS packets to the target receiver.
     Decrypts the Opcode field on the receiver's side to reconstruct the original message.
 
+    Capacity: 23.51831 bits per second. This is the average sending rate of 10 128-bit packets.
+
 The channel leverages bit-level manipulations to securely encode information into DNS packets while maintaining compliance with protocol structures.
 How It Works
 Encryption & Decryption
@@ -22,7 +24,8 @@ Encryption & Decryption
         XORs the result with the key for added security.
 
 The decrypt function reverses these operations to retrieve the original 2-bit chunk.
-After each encrpytion and decrpytion, rule is incremented by the specified increment value and then taken module 16.
+After each encrpytion and decrpytion, rule is incremented by the specified increment value and then taken module 16. This is done for making the decryption process more difficult from outside.
+
 Sending Mechanism
 
     A random binary message is generated using the generate_random_binary_message_with_logging() function.

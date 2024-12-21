@@ -6,8 +6,13 @@
 Covert Channel documentation
 ============================
 
-Please add your names, group ID, and your link to the forked public repository here by editing `index.rst` in the docs folder.
+İsmail Berke Türkmen
 
+Hüsnü Cura
+
+Group 1
+
+https://github.com/Budique/covertovert
 
 .. toctree::
    :maxdepth: 2

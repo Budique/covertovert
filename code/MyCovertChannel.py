@@ -112,11 +112,11 @@ class MyCovertChannel(CovertChannelBase):
         """
         Sends a covert message using DNS query packets by encrypting binary data into the `opcode` field.
 
-        :param xor_key: A 4-bit integer (0–15) used as the XOR key for encryption.
+        :param xor_key: A 4-bit integer (0–15) used as the XOR key for encryption. It should be same on receiver and sender.
         :type xor_key: int
-        :param rule: A 4-bit integer (0–15) defining the initial encryption rule.
+        :param rule: A 4-bit integer (0–15) defining the initial encryption rule. It should be same on receiver and sender.
         :type rule: int
-        :param increment: The increment value for the rule, used to vary the encryption rule for each packet.
+        :param increment: The increment value for the rule, used to vary the encryption rule for each packet.It should be same on receiver and sender.
         :type increment: int
         :param log_file_name: The name of the file where the sent binary message will be logged.
         :type log_file_name: str
@@ -170,7 +170,7 @@ class MyCovertChannel(CovertChannelBase):
         #print(f"Sent 128 bits in {execution_time}.\nBitrate: {(128/execution_time):.4f}")
 
         
-    def receive(self, xor_key, rule, increment, log_file_name):
+    def receive(self, xor_key, rule, increment, log_file_name,sender_ip):
         """
         Receives a covert message by decrypting binary data from DNS query packets captured on port 53.
 
@@ -180,6 +180,8 @@ class MyCovertChannel(CovertChannelBase):
         :type rule: int
         :param increment: The increment value for the rule, used to vary the decryption rule for each packet.
         :type increment: int
+        :param sender_ip: ip value of sender.
+        :type sender_ip: str
         :param log_file_name: The name of the file where the decoded message will be logged.
         :type log_file_name: str
 
@@ -217,8 +219,6 @@ class MyCovertChannel(CovertChannelBase):
         message = ""  # Final decoded message
         cur = 0       # Counter to track bits received
         dotAcquired = False
-        sender_ip = "172.18.0.2"
-
         def stop_sniffing(packet):
             #continue as long as dot is not received
             nonlocal dotAcquired

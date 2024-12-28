@@ -103,7 +103,8 @@ Receiver runs the following script:
     rule = 0b1101
     increment = 0b0011
     channel = MyCovertChannel()
-    channel.receive(xor_key, rule, increment, "received_log.txt")
+    sender_ip ="172.18.0.2"
+    channel.receive(xor_key, rule, increment,sender_ip "received_log.txt")
 
     Output:
         Packets are sniffed, decrypted, and the original message is reconstructed.

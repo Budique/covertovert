@@ -13,6 +13,7 @@
       "xor_key": 5,
       "rule": 7,
       "increment": 3,
+      "sender_ip":"172.18.0.2",
       "log_file_name": "Example_UDPTimingInterarrivalChannelReceiver.log"
     }
   }
